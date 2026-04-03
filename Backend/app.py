@@ -1,27 +1,40 @@
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import List
 
-# 1. Configuration - Simplest version
 class Settings(BaseSettings):
-    app_name: str = "FastAPI Static Service"
-    
-    # extra="ignore" allows us to leave the .env as is
+    app_name: str = "Cuisinsta-Backend"
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
 
-# 2. Initialize FastAPI
+class Reel(BaseModel):
+    id: str
+    username: str
+    likes: int
+    views: int
+    shares: int
+
+# Mock Database (20 Reels)
+MOCK_REELS = [
+    {"id": f"vid_{i}", "username": f"user_{i%5}", "likes": 100 * i, "views": 1000 * i, "shares": 10 * i}
+    for i in range(1, 21)
+]
+
 app = FastAPI(title=settings.app_name)
 
-# 3. Simple Health Check Endpoint (No DB)
 @app.get("/health")
 def health_check():
-    return {
-        "status": "online",
-        "service": settings.app_name,
-        "message": "Service is running without database dependency"
-    }
+    return {"status": "online"}
+
+@app.get("/reels", response_model=List[Reel])
+def get_reels(page: int = Query(1, ge=1)):
+    page_size = 5
+    start = (page - 1) * page_size
+    end = start + page_size
+    return MOCK_REELS[start:end]
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=5002)
